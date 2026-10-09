@@ -8,3 +8,4 @@ htmlcov/
 instance/*.db
 instance/*.sqlite
 instance/*.sqlite3
+instance/backups/

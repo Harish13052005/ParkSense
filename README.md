@@ -38,8 +38,8 @@ enforce these roles independently of which navigation links are visible.
 ## Requirements
 
 - Python 3.10+
-- SQLite for local development (included with Python)
-- MySQL 8+ is optional for shared/deployed environments
+- MySQL 8+
+- SQLite is available only as an explicit local-development opt-in
 
 ## Local setup
 
@@ -51,14 +51,28 @@ enforce these roles independently of which navigation links are visible.
    pip install -r requirements.txt
    ```
 
-2. Create your local environment file. The checked-in example defaults to
-   SQLite, so no database server or credentials are required:
+2. Copy the environment template and edit `.env` with the MySQL account
+   details granted access to `parksense_db`. Keep this file local:
 
    ```powershell
    Copy-Item .env.example .env
    ```
 
-3. Apply schema migrations and add the documented 400 bays:
+3. Verify the connection and inspect the current MySQL tables and migration
+   revision before changing the schema:
+
+   ```powershell
+   python check_db_connection.py
+   python -m flask --app run.py db current
+   python -m flask --app run.py db history
+   ```
+
+   Back up the database with `mysqldump` before any migration. Review the
+   existing table names and columns first; do not upgrade a database whose
+   legacy tables need a data-mapping decision.
+
+4. Only after schema reconciliation and a verified backup, apply migrations
+   and add the documented 400 bays:
 
    ```powershell
    python -m flask --app run.py db upgrade
@@ -68,7 +82,7 @@ enforce these roles independently of which navigation links are visible.
    The seed command creates 200 2-wheeler bays, 50 3-wheeler bays, and 150
    4-wheeler bays. It is safe to run again and does not overwrite existing bays.
 
-4. Provision an administrator from the command line. The password is entered
+5. Provision an administrator from the command line. The password is entered
    interactively and is not part of shell history:
 
    ```powershell
@@ -80,26 +94,25 @@ enforce these roles independently of which navigation links are visible.
    This promotes that existing account to administrator and stores only a
    Werkzeug password hash.
 
-5. Start the web application:
+6. Start the web application:
 
    ```powershell
    python -m flask --app run.py run --debug
    ```
 
-6. Open `http://127.0.0.1:5000`. The landing page keeps **User login** and
+7. Open `http://127.0.0.1:5000`. The landing page keeps **User login** and
    **Administrator login** separate. Drivers can create customer accounts;
    administrator accounts can only be provisioned with the CLI. Existing
    accounts are migrated as administrators to preserve their operations access.
 
-The SQLite database is stored at `instance/parksense.db` and is created by
-Flask-SQLAlchemy. The app defaults to this SQLite database when neither
-`DATABASE_URL` nor `MYSQL_HOST` is configured. For MySQL, remove `DATABASE_URL`
-from `.env`, set the `MYSQL_*` values from `.env.example`, and create/grant the
-database account before applying migrations. When Flask runs directly on
-Windows, use `MYSQL_HOST=localhost`; `host.docker.internal` is for a Flask
-container connecting to MySQL on the Windows host. A supplied `DATABASE_URL`
-takes precedence over MySQL settings. Change both development secrets before
-deploying. Tests use an isolated in-memory SQLite database.
+The application targets MySQL database `parksense_db` by default. Set
+`MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DB`, `MYSQL_USER`, and `MYSQL_PASSWORD`
+in the local `.env` file; on Windows, use `MYSQL_HOST=localhost`. MySQL
+settings take precedence over `DATABASE_URL`, so an old SQLite URL cannot
+override a configured MySQL host. A SQLite `DATABASE_URL` is rejected unless
+`PARKSENSE_ALLOW_SQLITE=1` is also set. Existing SQLite files are left intact.
+Tests use an isolated in-memory SQLite database. Change both development
+secrets before deploying.
 
 ## Exact parking workflow
 

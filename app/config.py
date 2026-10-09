@@ -3,10 +3,6 @@ from urllib.parse import quote_plus
 
 
 def _database_uri() -> str:
-    database_url = os.getenv("DATABASE_URL")
-    if database_url:
-        return database_url
-
     mysql_host = os.getenv("MYSQL_HOST")
     if mysql_host:
         username = quote_plus(os.getenv("MYSQL_USER", "parksense_user"))
@@ -15,7 +11,25 @@ def _database_uri() -> str:
         database = os.getenv("MYSQL_DB", "parksense_db")
         return f"mysql+pymysql://{username}:{password}@{mysql_host}:{port}/{database}"
 
-    return "sqlite:///parksense.db"
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        if database_url.lower().startswith("sqlite") and os.getenv(
+            "PARKSENSE_ALLOW_SQLITE", ""
+        ).lower() not in {"1", "true", "yes"}:
+            raise RuntimeError(
+                "SQLite DATABASE_URL is disabled by default. Configure MYSQL_HOST "
+                "and MySQL credentials, or set PARKSENSE_ALLOW_SQLITE=1 for "
+                "intentional local SQLite use."
+            )
+        return database_url
+
+    username = quote_plus(os.getenv("MYSQL_USER", "parksense_user"))
+    password = quote_plus(os.getenv("MYSQL_PASSWORD", ""))
+    port = os.getenv("MYSQL_PORT", "3306")
+    database = os.getenv("MYSQL_DB", "parksense_db")
+    return (
+        f"mysql+pymysql://{username}:{password}@localhost:{port}/{database}"
+    )
 
 
 class Config:

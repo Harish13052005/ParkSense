@@ -26,7 +26,7 @@ def get_engine():
 
 def get_engine_url():
     try:
-        return get_engine().url.render_as_string(hide_password=False).replace(
+        return get_engine().url.render_as_string(hide_password=True).replace(
             '%', '%%')
     except AttributeError:
         return str(get_engine().url).replace('%', '%%')
@@ -38,6 +38,23 @@ def get_engine_url():
 # target_metadata = mymodel.Base.metadata
 config.set_main_option('sqlalchemy.url', get_engine_url())
 target_db = current_app.extensions['migrate'].db
+LEGACY_TABLES = {
+    "employees",
+    "vehicles",
+    "parking_lots",
+    "parking_zones",
+    "parking_slots",
+}
+
+
+def include_legacy_tables(object_, name, type_, reflected, compare_to):
+    """Keep intentionally preserved legacy tables out of autogenerate removals."""
+    table = object_ if type_ == "table" else getattr(object_, "table", None)
+    if reflected and table is not None and table.name in LEGACY_TABLES:
+        return False
+    if reflected and type_ == "table" and name in LEGACY_TABLES:
+        return False
+    return True
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
@@ -90,9 +107,10 @@ def run_migrations_online():
                 directives[:] = []
                 logger.info('No changes in schema detected.')
 
-    conf_args = current_app.extensions['migrate'].configure_args
+    conf_args = dict(current_app.extensions['migrate'].configure_args)
     if conf_args.get("process_revision_directives") is None:
         conf_args["process_revision_directives"] = process_revision_directives
+    conf_args.setdefault("include_object", include_legacy_tables)
 
     connectable = get_engine()
 

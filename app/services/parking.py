@@ -130,16 +130,25 @@ def register_vehicle(
 
 
 def seed_default_spots() -> int:
-    """Add the documented capacity, preserving custom bays and prior seed runs."""
+    """Fill each vehicle category up to its documented capacity."""
     created = 0
     for vehicle_type, prefix, capacity in (
         ("2-WHEELER", "TW", 200),
         ("3-WHEELER", "THW", 50),
         ("4-WHEELER", "FW", 150),
     ):
+        existing_numbers = {
+            spot.spot_number
+            for spot in ParkingSpot.query.filter_by(vehicle_type=vehicle_type).all()
+        }
+        remaining = max(0, capacity - len(existing_numbers))
         for index in range(1, capacity + 1):
+            if remaining == 0:
+                break
             number = f"{prefix}-{index:03d}"
-            if not ParkingSpot.query.filter_by(spot_number=number).first():
+            if number not in existing_numbers and not ParkingSpot.query.filter_by(
+                spot_number=number
+            ).first():
                 db.session.add(
                     ParkingSpot(
                         spot_number=number,
@@ -147,7 +156,9 @@ def seed_default_spots() -> int:
                         distance_from_entry=index,
                     )
                 )
+                existing_numbers.add(number)
                 created += 1
+                remaining -= 1
     return created
 
 
