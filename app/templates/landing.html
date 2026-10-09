@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}ParkSense | Parking, made simple{% endblock %}
+
+{% block content %}
+<section class="welcome-hero">
+    <div class="hero-copy">
+        <span class="eyebrow"><span class="status-pulse"></span> ORGANIZATION PARKING, REIMAGINED</span>
+        <h1>Arrive. Park.<br><span>Get on with your day.</span></h1>
+        <p>Find a place for your vehicle without the search. ParkSense brings reservations and reliable parking operations together in one calm, clear experience.</p>
+        <div class="d-flex flex-wrap gap-3 mt-4">
+            <a class="btn btn-primary btn-lg" href="{{ url_for('auth.user_login') }}">Book your parking <span aria-hidden="true">→</span></a>
+            <a class="btn btn-outline-light btn-lg" href="{{ url_for('auth.admin_login') }}">Operations sign in</a>
+        </div>
+        <div class="hero-proof"><span>✓ Smart bay allocation</span><span>✓ Your visits in one place</span><span>✓ Secure role-based access</span></div>
+    </div>
+    <div class="hero-visual" aria-label="Illustration of a car parked in a designated space">
+        <div class="hero-orbit orbit-one"></div><div class="hero-orbit orbit-two"></div>
+        <div class="hero-lot">
+            <div class="lot-label"><span class="status-pulse"></span> PARKING MADE EASY</div>
+            <div class="parking-line"></div><div class="parking-line line-two"></div>
+            <div class="car-illustration"><div class="car-glass"></div><div class="car-wheel wheel-one"></div><div class="car-wheel wheel-two"></div><span class="car-light"></span></div>
+            <div class="lot-slot"><span>YOUR SPACE</span><strong>P</strong></div>
+        </div>
+        <div class="float-chip chip-top"><span class="chip-icon">⌖</span><span><strong>Right where you need it</strong><small>Compatible spaces, assigned automatically</small></span></div>
+        <div class="float-chip chip-bottom"><span class="chip-check">✓</span><span><strong>Reservation confirmed</strong><small>Your parking is taken care of</small></span></div>
+    </div>
+</section>
+
+<section class="welcome-section">
+    <div class="section-heading"><div><span class="eyebrow text-primary">TWO SIMPLE WAYS IN</span><h2>Everything in the right hands.</h2></div><p>Drivers get a straightforward booking experience. Administrators get the tools to keep the whole facility running.</p></div>
+    <div class="row g-4">
+        <div class="col-md-6"><article class="access-card customer-card h-100"><div class="access-icon">↗</div><span class="eyebrow">FOR DRIVERS</span><h3>Your parking, all in one place.</h3><p>Add your vehicle, reserve a compatible bay, record your demo advance payment, and check your visit history whenever you need it.</p><a class="text-link" href="{{ url_for('auth.user_login') }}">User login <span aria-hidden="true">→</span></a><div class="access-foot">New here? <a href="{{ url_for('auth.register') }}">Create a user account</a></div></article></div>
+        <div class="col-md-6"><article class="access-card admin-card h-100"><div class="access-icon">▦</div><span class="eyebrow">FOR PARKING TEAMS</span><h3>A clear view of every operation.</h3><p>Admit vehicles, manage employees and bays, handle reservations, complete checkouts, and monitor facility performance.</p><a class="text-link" href="{{ url_for('auth.admin_login') }}">Administrator login <span aria-hidden="true">→</span></a><div class="access-foot">Administrator accounts are provisioned by your organization.</div></article></div>
+    </div>
+</section>
+<section class="benefit-strip"><div><strong>400</strong><span>planned parking bays</span></div><div><strong>3</strong><span>vehicle classes supported</span></div><div><strong>1</strong><span>simple parking experience</span></div><p>Facility capacity appears after an administrator seeds the parking inventory.</p></section>
+{% endblock %}

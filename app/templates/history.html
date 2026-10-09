@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Visit History | ParkSense{% endblock %}
+
+{% block content %}
+<header class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+    <div>
+        <p class="text-uppercase text-primary fw-semibold small mb-1">Auditable records</p>
+        <h1 class="h2 mb-1">Parking visit history</h1>
+        <p class="text-secondary mb-0">Filter visits and export matching records with the fare breakdown. Showing at most 200 visits here; CSV exports include up to 10,000.</p>
+    </div>
+    <a class="btn btn-outline-primary"
+       href="{{ url_for('main.export_history', vehicle_number=filters.vehicle_number, status=filters.status, date_from=filters.date_from, date_to=filters.date_to) }}">
+        Export matching CSV
+    </a>
+</header>
+<form class="card card-body mb-3" method="get" action="{{ url_for('main.history') }}">
+    <div class="row g-3 align-items-end">
+        <div class="col-12 col-md-4">
+            <label class="form-label" for="history-vehicle">Vehicle registration</label>
+            <input class="form-control" id="history-vehicle" name="vehicle_number"
+                   value="{{ filters.vehicle_number }}" maxlength="20">
+        </div>
+        <div class="col-12 col-sm-6 col-md-2">
+            <label class="form-label" for="history-status">Status</label>
+            <select class="form-select" id="history-status" name="status">
+                <option value="" {{ 'selected' if not filters.status else '' }}>All statuses</option>
+                <option value="ACTIVE" {{ 'selected' if filters.status == 'ACTIVE' else '' }}>Active</option>
+                <option value="COMPLETED" {{ 'selected' if filters.status == 'COMPLETED' else '' }}>Completed</option>
+                <option value="CANCELLED" {{ 'selected' if filters.status == 'CANCELLED' else '' }}>Cancelled</option>
+            </select>
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label" for="history-date-from">Entry from</label>
+            <input class="form-control" id="history-date-from" name="date_from" type="date"
+                   value="{{ filters.date_from }}">
+        </div>
+        <div class="col-6 col-md-2">
+            <label class="form-label" for="history-date-to">Entry through</label>
+            <input class="form-control" id="history-date-to" name="date_to" type="date"
+                   value="{{ filters.date_to }}">
+        </div>
+        <div class="col-12 col-md-2 d-flex gap-2">
+            <button class="btn btn-primary flex-grow-1" type="submit">Filter</button>
+            <a class="btn btn-outline-secondary" href="{{ url_for('main.history') }}">Clear</a>
+        </div>
+    </div>
+</form>
+<div class="card">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr><th>Vehicle</th><th>Bay</th><th>Entry</th><th>Exit</th><th>Duration</th><th>Status</th><th>Base</th><th>Discounts</th><th>Tax</th><th>Prepaid</th><th>Total</th><th>Balance</th><th>Overstay</th></tr>
+            </thead>
+            <tbody>
+            {% for session in sessions %}
+                <tr>
+                    <td>{{ session.vehicle.vehicle_number }}<br><span class="small text-secondary">{{ session.vehicle.vehicle_type }}</span></td>
+                    <td>{{ session.spot.spot_number }}</td>
+                    <td>{{ session.entry_time|localtime }}</td>
+                    <td>{{ session.exit_time|localtime if session.exit_time else "—" }}</td>
+                    <td>{{ session.duration_minutes if session.duration_minutes is not none else "—" }}{% if session.duration_minutes is not none %} min{% endif %}</td>
+                    <td><span class="badge {{ 'text-bg-success' if session.status == 'COMPLETED' else 'text-bg-danger' }}">{{ session.status }}</span></td>
+                    <td>{{ "%.2f"|format(session.base_fare) }}</td>
+                    <td>{{ "%.2f"|format(session.employee_discount + session.loyalty_discount) }}</td>
+                    <td>{{ "%.2f"|format(session.tax_amount) }}</td>
+                    <td>{{ "%.2f"|format(session.prepaid_amount) }}</td>
+                    <td class="fw-semibold">{{ "%.2f"|format(session.final_fare) }}</td>
+                    <td>{{ "%.2f"|format(session.amount_due) }}</td>
+                    <td>{{ session.overstay_minutes }} min</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="13" class="text-secondary text-center py-4">No visits match these filters.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

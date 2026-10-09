@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}My Parking | ParkSense{% endblock %}
+
+{% block content %}
+<header class="mb-4">
+    <p class="text-uppercase text-primary fw-semibold small mb-1">User account</p>
+    <h1 class="h2 mb-1">My parking</h1>
+    <p class="text-secondary mb-0">Manage your registered vehicles and reservations, and view your visit history.</p>
+</header>
+
+<section class="row g-3 mb-4" aria-label="Your parking summary">
+    <div class="col-6 col-lg-3"><div class="card summary-card h-100"><div class="card-body"><span class="summary-icon">CAR</span><p class="text-secondary mb-1">My vehicles</p><strong>{{ vehicles|length }}</strong></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card summary-card h-100"><div class="card-body"><span class="summary-icon">BAY</span><p class="text-secondary mb-1">Reservations</p><strong>{{ reservations|length }}</strong></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card summary-card h-100"><div class="card-body"><span class="summary-icon">DONE</span><p class="text-secondary mb-1">Completed visits</p><strong>{{ sessions|selectattr('status', 'equalto', 'COMPLETED')|list|length }}</strong></div></div></div>
+    <div class="col-6 col-lg-3"><div class="card summary-card h-100"><div class="card-body"><span class="summary-icon">LIVE</span><p class="text-secondary mb-1">Active visits</p><strong>{{ sessions|selectattr('status', 'equalto', 'ACTIVE')|list|length }}</strong></div></div></div>
+</section>
+
+<section class="row g-4 mb-4">
+    <div class="col-12 col-xl-5">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">My vehicles</div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('main.account_add_vehicle') }}" class="row g-2 align-items-end mb-3">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="col-12 col-md-5">
+                        <label class="form-label" for="vehicle-number">Registration</label>
+                        <input class="form-control" id="vehicle-number" name="vehicle_number" maxlength="20" required>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label" for="vehicle-type">Vehicle type</label>
+                        <select class="form-select" id="vehicle-type" name="vehicle_type" required>
+                            <option value="2-WHEELER">2-wheeler</option>
+                            <option value="3-WHEELER">3-wheeler</option>
+                            <option value="4-WHEELER">4-wheeler</option>
+                        </select>
+                    </div>
+                    <div class="col-12 col-md-3"><button class="btn btn-primary w-100" type="submit">Add vehicle</button></div>
+                </form>
+                <div class="list-group list-group-flush">
+                    {% for vehicle in vehicles %}
+                        <div class="list-group-item px-0 d-flex justify-content-between align-items-center gap-2">
+                            <span><strong>{{ vehicle.vehicle_number }}</strong><br><span class="small text-secondary">{{ vehicle.vehicle_type }}</span></span>
+                            <form method="post" action="{{ url_for('main.account_remove_vehicle', vehicle_id=vehicle.id) }}">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Remove</button>
+                            </form>
+                        </div>
+                    {% else %}
+                        <p class="text-secondary mb-0">Add a vehicle to make a reservation.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-7">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Make a reservation</div>
+            <div class="card-body">
+                {% if vehicles %}
+                <form method="post" action="{{ url_for('main.account_add_reservation') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label class="form-label" for="reservation-vehicle">Vehicle</label>
+                    <select class="form-select mb-3" id="reservation-vehicle" name="vehicle_number" required>
+                        {% for vehicle in vehicles %}<option value="{{ vehicle.vehicle_number }}">{{ vehicle.vehicle_number }} · {{ vehicle.vehicle_type }}</option>{% endfor %}
+                    </select>
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="reservation-start">Start</label>
+                            <input class="form-control" id="reservation-start" name="starts_at" type="datetime-local" required>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label" for="reservation-end">End</label>
+                            <input class="form-control" id="reservation-end" name="ends_at" type="datetime-local" required>
+                        </div>
+                    </div>
+                    <p class="booking-note small mt-3"><strong>How it works</strong><br>We check compatible bay availability and calculate your estimated fare from organization rates. Advance payment is simulated for this release; no real payment is processed.</p>
+                    <button class="btn btn-outline-primary" type="submit">Check availability and reserve</button>
+                </form>
+                {% else %}
+                    <p class="text-secondary mb-0">Register a vehicle before creating a reservation.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="card mb-4">
+    <div class="card-header fw-semibold">My reservations</div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th>Vehicle / bay</th><th>Time window</th><th>Estimated fare</th><th>Status</th><th>Actions</th></tr></thead>
+            <tbody>
+            {% for reservation in reservations %}
+                <tr>
+                    <td>{{ reservation.vehicle.vehicle_number }}<br><span class="small text-secondary">{{ reservation.spot.spot_number }}</span></td>
+                    <td class="small">{{ reservation.starts_at|localtime }}<br>to {{ reservation.ends_at|localtime }}</td>
+                    <td>{{ "%.2f"|format(reservation.estimated_fare) }}</td>
+                    <td>{{ reservation.status }}<br><span class="small text-secondary">{{ reservation.payment_status }}</span></td>
+                    <td>
+                        {% if reservation.status == "PENDING_PAYMENT" %}
+                            <form method="post" action="{{ url_for('main.account_reservation_action', reservation_id=reservation.id, action='payment') }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="btn btn-sm btn-success" type="submit">Record demo payment</button>
+                            </form>
+                        {% endif %}
+                        {% if reservation.status in ("PENDING_PAYMENT", "CONFIRMED") %}
+                            <form method="post" action="{{ url_for('main.account_reservation_action', reservation_id=reservation.id, action='cancel') }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Cancel</button>
+                            </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% else %}
+                <tr><td colspan="5" class="text-center text-secondary py-4">You have no reservations.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="card">
+    <div class="card-header fw-semibold">My visit history</div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light"><tr><th>Vehicle</th><th>Bay</th><th>Entry</th><th>Exit</th><th>Duration</th><th>Status</th><th>Fare</th><th>Balance</th></tr></thead>
+            <tbody>
+            {% for session in sessions %}
+                <tr>
+                    <td>{{ session.vehicle.vehicle_number }}</td>
+                    <td>{{ session.spot.spot_number }}</td>
+                    <td>{{ session.entry_time|localtime }}</td>
+                    <td>{{ session.exit_time|localtime if session.exit_time else "—" }}</td>
+                    <td>{{ session.duration_minutes if session.duration_minutes is not none else "—" }}{% if session.duration_minutes is not none %} min{% endif %}</td>
+                    <td>{{ session.status }}</td>
+                    <td>{{ "%.2f"|format(session.final_fare) }}</td>
+                    <td>{{ "%.2f"|format(session.amount_due) }}</td>
+                </tr>
+            {% else %}
+                <tr><td colspan="8" class="text-center text-secondary py-4">Your completed visits will appear here.</td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

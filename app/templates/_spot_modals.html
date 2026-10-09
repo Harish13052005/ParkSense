@@ -1,0 +1,63 @@
+<div class="modal fade" id="addSpotModal" tabindex="-1" aria-labelledby="addSpotLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" id="add-spot-form">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="addSpotLabel">Add a parking bay</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label" for="add-spot-number">Bay number</label>
+                <input class="form-control mb-3" id="add-spot-number" name="spot_number" maxlength="20" required>
+                <label class="form-label" for="add-spot-type">Compatible vehicle</label>
+                <select class="form-select mb-3" id="add-spot-type">
+                    <option value="2-WHEELER">2-wheeler</option>
+                    <option value="3-WHEELER">3-wheeler</option>
+                    <option value="4-WHEELER" selected>4-wheeler</option>
+                </select>
+                <label class="form-label" for="add-spot-distance">Distance from entry</label>
+                <input class="form-control" id="add-spot-distance" type="number" min="0" value="0" required>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Create bay</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="editSpotModal" tabindex="-1" aria-labelledby="editSpotLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <form class="modal-content" id="edit-spot-form">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="editSpotLabel">Edit parking bay</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="edit-spot-id">
+                <label class="form-label" for="edit-spot-number">Bay number</label>
+                <input class="form-control mb-3" id="edit-spot-number" maxlength="20" required>
+                <label class="form-label" for="edit-spot-type">Compatible vehicle</label>
+                <select class="form-select mb-3" id="edit-spot-type">
+                    <option value="2-WHEELER">2-wheeler</option>
+                    <option value="3-WHEELER">3-wheeler</option>
+                    <option value="4-WHEELER">4-wheeler</option>
+                </select>
+                <label class="form-label" for="edit-spot-distance">Distance from entry</label>
+                <input class="form-control mb-3" id="edit-spot-distance" type="number" min="0" required>
+                <label class="form-label" for="edit-spot-status">Status</label>
+                <select class="form-select" id="edit-spot-status">
+                    <option value="AVAILABLE">Available</option>
+                    <option value="OCCUPIED">Occupied</option>
+                    <option value="RESERVED">Reserved</option>
+                    <option value="MAINTENANCE">Maintenance</option>
+                    <option value="BLOCKED">Blocked</option>
+                </select>
+                <p class="form-text mb-0">A bay currently in use cannot be manually released or taken out of service.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save changes</button>
+            </div>
+        </form>
+    </div>
+</div>

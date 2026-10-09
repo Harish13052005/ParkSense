@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% block title %}Operations Dashboard | ParkSense{% endblock %}
+
+{% block content %}
+<header class="d-flex flex-wrap align-items-end justify-content-between gap-3 mb-4">
+    <div>
+        <p class="text-uppercase text-primary fw-semibold small mb-1">Parking operations</p>
+        <h1 class="h2 mb-1">Live facility dashboard</h1>
+        <p class="text-secondary mb-0">Allocate bays, manage reservations and complete vehicle visits.</p>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-outline-primary" href="{{ url_for('main.employees') }}">Manage employees</a>
+        <a class="btn btn-outline-primary" href="{{ url_for('main.list_spots') }}">Manage parking bays</a>
+    </div>
+</header>
+
+<section class="row g-3 mb-4" aria-label="Parking occupancy summary">
+    <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+        <p class="text-secondary mb-1">Total bays</p><p class="display-6 mb-0">{{ stats.total_slots }}</p>
+    </div></div></div>
+    <div class="col-6 col-lg-3"><div class="card h-100 border-success"><div class="card-body">
+        <p class="text-secondary mb-1">Available</p><p class="display-6 text-success mb-0">{{ stats.available_slots }}</p>
+    </div></div></div>
+    <div class="col-6 col-lg-3"><div class="card h-100 border-danger"><div class="card-body">
+        <p class="text-secondary mb-1">Occupied</p><p class="display-6 text-danger mb-0">{{ stats.occupied_slots }}</p>
+    </div></div></div>
+    <div class="col-6 col-lg-3"><div class="card h-100"><div class="card-body">
+        <p class="text-secondary mb-1">Current occupancy</p><p class="display-6 mb-0">{{ stats.occupancy_percent }}%</p>
+    </div></div></div>
+</section>
+
+<section class="row g-3 mb-4" aria-label="Detailed occupancy analytics">
+    <div class="col-12 col-lg-7">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Vehicle-type distribution</div>
+            <div class="card-body">
+                <div class="row g-3">
+                    {% for vehicle_type, counts in stats.vehicle_type_distribution.items() %}
+                    <div class="col-sm-4">
+                        <p class="text-secondary small mb-1">{{ vehicle_type }}</p>
+                        <strong>{{ counts.occupied }} / {{ counts.total }}</strong>
+                        <span class="text-secondary small">occupied</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <hr>
+                <div class="d-flex flex-wrap gap-3">
+                    {% for status, count in stats.slot_status_counts.items() %}
+                    <span class="small"><strong>{{ count }}</strong> {{ status|lower|replace("_", " ") }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-5">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Most frequent vehicles</div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Vehicle</th><th>Completed visits</th><th>Loyalty tier</th></tr></thead>
+                    <tbody>
+                    {% for vehicle in stats.frequent_vehicles %}
+                        <tr><td>{{ vehicle.vehicle_number }}</td><td>{{ vehicle.visits }}</td><td>{{ vehicle.loyalty_tier }}</td></tr>
+                    {% else %}
+                        <tr><td colspan="3" class="text-secondary text-center py-3">Visit history will populate this list.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="card mb-4" aria-labelledby="bay-map-heading">
+    <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+        <div>
+            <h2 class="h5 mb-0" id="bay-map-heading">Live parking-bay map</h2>
+            <p class="small text-secondary mb-0">Color shows live status; the tooltip shows 30-day utilization.</p>
+        </div>
+        <div class="d-flex flex-wrap gap-3 small" aria-label="Parking bay status legend">
+            <span><i class="bay-legend bay-available"></i>Available</span>
+            <span><i class="bay-legend bay-occupied"></i>Occupied</span>
+            <span><i class="bay-legend bay-reserved"></i>Reserved</span>
+            <span><i class="bay-legend bay-maintenance"></i>Maintenance</span>
+            <span><i class="bay-legend bay-blocked"></i>Blocked</span>
+        </div>
+    </div>
+    <div class="card-body">
+        {% for vehicle_type, bays in spot_map.items() %}
+        <div class="mb-3">
+            <h3 class="h6">{{ vehicle_type }} <span class="text-secondary fw-normal">({{ bays|length }} bays)</span></h3>
+            <div class="bay-map" role="list" aria-label="{{ vehicle_type }} bays">
+                {% for bay in bays %}
+                <span class="bay-tile bay-{{ bay.spot.status|lower }}" role="listitem"
+                      title="{{ bay.spot.spot_number }} · {{ bay.spot.status }} · {{ bay.utilization_percent }}% utilized in the last 30 days"
+                      aria-label="{{ bay.spot.spot_number }}, {{ bay.spot.status }}, {{ bay.utilization_percent }} percent 30-day utilization">
+                    {{ bay.spot.spot_number }}
+                </span>
+                {% else %}
+                <span class="text-secondary small">No bays configured for this vehicle type.</span>
+                {% endfor %}
+            </div>
+        </div>
+        {% else %}
+        <p class="text-secondary mb-0">Add parking bays to see the live map.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-12 col-xl-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Register a vehicle</div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('main.add_vehicle') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label class="form-label" for="vehicle-number">Vehicle registration</label>
+                    <input class="form-control mb-3" id="vehicle-number" name="vehicle_number" maxlength="20" required>
+                    <label class="form-label" for="vehicle-type">Vehicle type</label>
+                    <select class="form-select mb-3" id="vehicle-type" name="vehicle_type" required>
+                        <option value="2-WHEELER">2-wheeler</option>
+                        <option value="3-WHEELER">3-wheeler</option>
+                        <option value="4-WHEELER">4-wheeler</option>
+                    </select>
+                    <label class="form-label" for="employee-code">Employee ID <span class="text-secondary">(optional)</span></label>
+                    <input class="form-control mb-3" id="employee-code" name="employee_code">
+                    <details class="mb-3">
+                        <summary>Register a new employee</summary>
+                        <label class="form-label mt-2" for="employee-name">Employee name</label>
+                        <input class="form-control mb-2" id="employee-name" name="employee_name">
+                        <label class="form-label" for="department">Department</label>
+                        <input class="form-control mb-2" id="department" name="department">
+                        <label class="form-label" for="exemption-percent">Employee exemption % <span class="text-secondary">(optional policy override)</span></label>
+                        <input class="form-control" id="exemption-percent" name="exemption_percent" type="number" min="0" max="100" step="0.01">
+                    </details>
+                    <button class="btn btn-primary w-100" type="submit">Register vehicle</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Vehicle entry</div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('main.vehicle_entry') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label class="form-label" for="entry-number">Registered vehicle</label>
+                    <input class="form-control mb-3" id="entry-number" name="vehicle_number" list="vehicle-list" required>
+                    <datalist id="vehicle-list">{% for vehicle in vehicles %}<option value="{{ vehicle.vehicle_number }}">{% endfor %}</datalist>
+                    <label class="form-label" for="entry-reservation">Paid reservation ID <span class="text-secondary">(optional)</span></label>
+                    <input class="form-control mb-3" id="entry-reservation" name="reservation_id" type="number" min="1">
+                    <p class="small text-secondary">The nearest available compatible bay is allocated automatically.</p>
+                    <button class="btn btn-success w-100" type="submit">Check in</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xl-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Reserve a parking bay</div>
+            <div class="card-body">
+                <form method="post" action="{{ url_for('main.add_reservation') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label class="form-label" for="reservation-number">Registered vehicle</label>
+                    <input class="form-control mb-3" id="reservation-number" name="vehicle_number" list="vehicle-list" required>
+                    <label class="form-label" for="reservation-start">Start</label>
+                    <input class="form-control mb-3" id="reservation-start" name="starts_at" type="datetime-local" required>
+                    <label class="form-label" for="reservation-end">End</label>
+                    <input class="form-control mb-3" id="reservation-end" name="ends_at" type="datetime-local" required>
+                    <p class="small text-secondary">An estimated fare is calculated from configured hourly rates, tax and discounts. Confirm advance payment below.</p>
+                    <button class="btn btn-outline-primary w-100" type="submit">Check availability &amp; reserve</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3 mb-4">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span class="fw-semibold">Active parking sessions</span>
+                <span class="badge text-bg-danger">{{ stats.active_sessions|length }} active</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead><tr><th>Vehicle</th><th>Bay</th><th>Entry time</th><th>Checkout</th></tr></thead>
+                    <tbody>
+                    {% for session in stats.active_sessions %}
+                        <tr>
+                            <td class="fw-semibold">{{ session.vehicle.vehicle_number }}</td>
+                            <td>{{ session.spot.spot_number }}</td>
+                            <td>{{ session.entry_time|localtime }}</td>
+                            <td><form method="post" action="{{ url_for('main.vehicle_exit') }}" class="d-flex gap-2">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="vehicle_number" value="{{ session.vehicle.vehicle_number }}">
+                                <button class="btn btn-sm btn-primary" type="submit">Check out</button>
+                            </form></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="4" class="text-secondary text-center py-4">No vehicles are currently parked.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Reservations</div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead><tr><th>Vehicle / bay</th><th>Window</th><th>Payment / action</th></tr></thead>
+                    <tbody>
+                    {% for reservation in reservations %}
+                        <tr>
+                            <td>{{ reservation.vehicle.vehicle_number }}<br><span class="small text-secondary">{{ reservation.spot.spot_number }} · #{{ reservation.id }}</span></td>
+                            <td class="small">{{ reservation.starts_at|localtime("%m-%d %H:%M") }}<br>to {{ reservation.ends_at|localtime("%m-%d %H:%M") }}</td>
+                            <td>
+                                <span class="badge text-bg-secondary">{{ reservation.status }}</span>
+                                <div class="small text-secondary">{{ reservation.payment_status }} · {{ reservation.estimated_fare }}</div>
+                                {% if reservation.status == "PENDING_PAYMENT" %}
+                                    <form method="post" action="{{ url_for('main.reservation_payment', reservation_id=reservation.id) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button class="btn btn-sm btn-success mt-1" type="submit">Record demo payment</button>
+                                    </form>
+                                {% elif reservation.status == "CONFIRMED" %}
+                                    <form method="post" action="{{ url_for('main.reservation_cancel', reservation_id=reservation.id) }}" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button class="btn btn-sm btn-outline-danger mt-1" type="submit">Cancel</button>
+                                    </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="3" class="text-secondary text-center py-4">No reservations recorded.</td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="row g-3">
+    <div class="col-6 col-lg-2"><div class="card"><div class="card-body"><p class="text-secondary mb-1">Lifetime revenue</p><strong>{{ "%.2f"|format(stats.revenue) }}</strong></div></div></div>
+    <div class="col-6 col-lg-2"><div class="card"><div class="card-body"><p class="text-secondary mb-1">Completed visits</p><strong>{{ stats.completed_sessions }}</strong></div></div></div>
+    <div class="col-6 col-lg-2"><div class="card"><div class="card-body"><p class="text-secondary mb-1">Average visit</p><strong>{{ stats.average_duration_minutes }} min</strong></div></div></div>
+    <div class="col-6 col-lg-2"><div class="card"><div class="card-body"><p class="text-secondary mb-1">Reservations</p><strong>{{ stats.reservation_count }}</strong></div></div></div>
+    <div class="col-6 col-lg-2"><div class="card"><div class="card-body"><p class="text-secondary mb-1">Employee visits</p><strong>{{ stats.employee_sessions }}</strong></div></div></div>
+    <div class="col-6 col-lg-2"><div class="card"><div class="card-body"><p class="text-secondary mb-1">Guest visits</p><strong>{{ stats.non_employee_sessions }}</strong></div></div></div>
+</section>
+<section class="row g-3 mt-1">
+    <div class="col-12 col-lg-6">
+        <div class="card">
+            <div class="card-header fw-semibold">Peak entry hours</div>
+            <div class="card-body d-flex flex-wrap gap-3">
+                {% for hour, visits in stats.peak_hours %}
+                    <span><strong>{{ hour }}:00</strong> · {{ visits }} visits</span>
+                {% else %}
+                    <span class="text-secondary">Completed visits will populate this summary.</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-6">
+        <div class="card">
+            <div class="card-header fw-semibold">Peak days</div>
+            <div class="card-body d-flex flex-wrap gap-3">
+                {% for day, visits in stats.peak_days %}
+                    <span><strong>{{ day }}</strong> · {{ visits }} visits</span>
+                {% else %}
+                    <span class="text-secondary">Completed visits will populate this summary.</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header fw-semibold">Upcoming reservation demand</div>
+            <div class="card-body d-flex flex-wrap gap-3">
+                {% for day in stats.reservation_demand %}
+                    <span><strong>{{ day.day }} {{ day.date }}</strong> · {{ day.count }} reservations</span>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
