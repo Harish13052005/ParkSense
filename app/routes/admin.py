@@ -5,6 +5,7 @@ from io import StringIO
 from flask import Response, flash, redirect, render_template, request, url_for
 from flask_login import current_user
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 
 from .blueprints import main_bp
 from .common import admin_required
@@ -161,7 +162,11 @@ def employees():
         else:
             flash(f"Employee {employee.employee_code} registered.", "success")
         return redirect(url_for("main.employees"))
-    employee_list = Employee.query.order_by(Employee.employee_code).all()
+    employee_list = (
+        Employee.query.options(selectinload(Employee.vehicles))
+        .order_by(Employee.employee_code)
+        .all()
+    )
     return render_template("employees.html", employees=employee_list)
 
 @main_bp.route("/admin/employees/<int:employee_id>/status", methods=["POST"])

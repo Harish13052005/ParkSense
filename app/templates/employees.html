@@ -38,12 +38,19 @@
             <div class="table-responsive">
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
-                        <tr><th>Employee</th><th>Department</th><th>Exemption</th><th>Status</th><th>Action</th></tr>
+                        <tr><th>Employee</th><th>Vehicle number</th><th>Department</th><th>Exemption</th><th>Status</th><th>Action</th></tr>
                     </thead>
                     <tbody>
                     {% for employee in employees %}
                         <tr>
                             <td><strong>{{ employee.full_name }}</strong><br><span class="small text-secondary">{{ employee.employee_code }}</span></td>
+                            <td>
+                                {% for vehicle in employee.vehicles %}
+                                    <a class="d-block" href="{{ url_for('main.history', vehicle_number=vehicle.vehicle_number) }}">{{ vehicle.vehicle_number }}</a>
+                                {% else %}
+                                    <span class="text-secondary">—</span>
+                                {% endfor %}
+                            </td>
                             <td>{{ employee.department or "—" }}</td>
                             <td>{{ (employee.exemption_percent|string ~ "%") if employee.exemption_percent is not none else "Default policy" }}</td>
                             <td><span class="badge {{ 'text-bg-success' if employee.is_active else 'text-bg-secondary' }}">{{ "Active" if employee.is_active else "Inactive" }}</span></td>
@@ -58,7 +65,7 @@
                             </td>
                         </tr>
                     {% else %}
-                        <tr><td class="text-secondary text-center py-4" colspan="5">No employees registered yet.</td></tr>
+                        <tr><td class="text-secondary text-center py-4" colspan="6">No employees registered yet.</td></tr>
                     {% endfor %}
                     </tbody>
                 </table>

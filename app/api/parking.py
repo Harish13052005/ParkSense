@@ -3,7 +3,7 @@ from flask_restx import Resource, abort, fields
 
 from ..extensions import db
 from ..models import ParkingSpot
-from ..services.parking import VEHICLE_TYPES
+from ..services.parking import VEHICLE_TYPES, reservation_spot_ids
 from . import api
 from .jwt_utils import jwt_required
 
@@ -16,6 +16,7 @@ spot_model = api.model(
         "distance_from_entry": fields.Integer,
         "status": fields.String,
         "is_occupied": fields.Boolean,
+        "reservation_only": fields.Boolean,
     },
 )
 spot_update_model = api.model(
@@ -42,7 +43,13 @@ class SpotList(Resource):
     @jwt_required
     @api.marshal_list_with(spot_model)
     def get(self):
-        return ParkingSpot.query.order_by(ParkingSpot.id).all()
+        spots = ParkingSpot.query.order_by(ParkingSpot.id).all()
+        reservation_ids = set().union(
+            *(reservation_spot_ids(kind) for kind in VEHICLE_TYPES)
+        )
+        for spot in spots:
+            spot.reservation_only = spot.id in reservation_ids
+        return spots
 
     @jwt_required
     @api.expect(spot_model, validate=True)
@@ -68,6 +75,7 @@ class SpotList(Resource):
         )
         db.session.add(spot)
         db.session.commit()
+        spot.reservation_only = spot.id in reservation_spot_ids(vehicle_type)
         return spot, 201
 
 

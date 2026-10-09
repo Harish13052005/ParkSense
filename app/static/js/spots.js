@@ -68,6 +68,11 @@ function renderSpotRow(spot) {
     number.textContent = spot.spot_number;
     const type = document.createElement("td");
     type.textContent = spot.vehicle_type;
+    const use = document.createElement("td");
+    const useBadge = document.createElement("span");
+    useBadge.className = `badge ${spot.reservation_only ? "text-bg-primary" : "text-bg-light"}`;
+    useBadge.textContent = spot.reservation_only ? "Reservation" : "Regular";
+    use.appendChild(useBadge);
     const distance = document.createElement("td");
     distance.textContent = String(spot.distance_from_entry);
     const status = document.createElement("td");
@@ -84,7 +89,7 @@ function renderSpotRow(spot) {
             showError(error.message);
         }
     }));
-    row.append(number, type, distance, status, actions);
+    row.append(number, type, use, distance, status, actions);
     return row;
 }
 

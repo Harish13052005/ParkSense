@@ -151,6 +151,18 @@ def seed_default_spots() -> int:
     return created
 
 
+def reservation_spot_ids(vehicle_type: str) -> set[int]:
+    """Return the farthest fifth of a category as its reservation pool."""
+    spots = ParkingSpot.query.filter_by(vehicle_type=vehicle_type).order_by(
+        ParkingSpot.distance_from_entry.desc(), ParkingSpot.id.desc()
+    ).all()
+    if not spots:
+        return set()
+    # Keep a usable reservation pool for small/custom categories too.
+    reservation_count = max(1, len(spots) // 5)
+    return {spot.id for spot in spots[:reservation_count]}
+
+
 def _reservation_overlap(spot_id: int, starts_at: datetime, ends_at: datetime):
     return Reservation.query.filter(
         Reservation.parking_spot_id == spot_id,
@@ -217,8 +229,12 @@ def _refresh_reservation_slots(now: datetime) -> bool:
         .distinct()
         .all()
     }
+    reservation_ids = set().union(
+        *(reservation_spot_ids(kind) for kind in VEHICLE_TYPES)
+    )
     reserved_spots = ParkingSpot.query.filter(
-        ParkingSpot.status.in_(("AVAILABLE", "RESERVED"))
+        ParkingSpot.id.in_(reservation_ids),
+        ParkingSpot.status.in_(("AVAILABLE", "RESERVED")),
     ).all()
     changed = False
     for spot in reserved_spots:
@@ -267,6 +283,7 @@ def check_in(
         if spot is None or spot.status not in ("AVAILABLE", "RESERVED"):
             raise ValueError("The reserved parking spot is not available.")
     else:
+        reservation_ids = reservation_spot_ids(vehicle.vehicle_type)
         candidates = (
             ParkingSpot.query.filter_by(
                 vehicle_type=vehicle.vehicle_type, status="AVAILABLE"
@@ -275,14 +292,19 @@ def check_in(
             .with_for_update()
             .all()
         )
+        available = [
+            candidate for candidate in candidates
+            if _reservation_overlap(candidate.id, now, datetime.max) is None
+        ]
         spot = next(
-            (
-                candidate
-                for candidate in candidates
-                if _reservation_overlap(candidate.id, now, datetime.max) is None
-            ),
+            (candidate for candidate in available if candidate.id not in reservation_ids),
             None,
         )
+        if spot is None:
+            spot = next(
+                (candidate for candidate in available if candidate.id in reservation_ids),
+                None,
+            )
         if spot is None:
             raise ValueError("No compatible parking spot is currently available.")
 
@@ -350,6 +372,7 @@ def create_reservation(
         raise ValueError("Reservation end time must be after its start time.")
     _refresh_reservation_slots(now)
     duration_minutes = max(1, int((end - start).total_seconds() // 60))
+    reservation_ids = reservation_spot_ids(vehicle.vehicle_type)
     candidates = (
         ParkingSpot.query.filter_by(vehicle_type=vehicle.vehicle_type, status="AVAILABLE")
         .order_by(ParkingSpot.distance_from_entry, ParkingSpot.id)
@@ -360,7 +383,8 @@ def create_reservation(
         (
             candidate
             for candidate in candidates
-            if _reservation_overlap(candidate.id, start, end) is None
+            if candidate.id in reservation_ids
+            and _reservation_overlap(candidate.id, start, end) is None
             and not ParkingSession.query.filter_by(
                 parking_spot_id=candidate.id, status="ACTIVE"
             ).first()
